@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+package-lock.json.tmp
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+.next/
+out/
+build/
+dist/
+*.log
+
+# Development files
+.git/
+.gitignore
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+.nyc_output/
+__tests__/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel

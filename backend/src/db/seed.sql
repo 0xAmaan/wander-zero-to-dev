@@ -1,0 +1,73 @@
+-- Seed Data for Wander Deployment Tracker
+-- Description: Mock data for demo purposes
+
+-- =============================================================================
+-- SERVICES (4 services)
+-- =============================================================================
+
+INSERT INTO services (name, description, repository_url) VALUES
+  ('frontend', 'Next.js web application', 'https://github.com/wander/frontend'),
+  ('api', 'Hono REST API backend', 'https://github.com/wander/api'),
+  ('worker', 'Background job processor', 'https://github.com/wander/worker'),
+  ('analytics', 'Data analytics service', 'https://github.com/wander/analytics')
+ON CONFLICT (name) DO NOTHING;
+
+-- =============================================================================
+-- ENVIRONMENTS (3 environments)
+-- =============================================================================
+
+INSERT INTO environments (name, description) VALUES
+  ('development', 'Local development environment'),
+  ('staging', 'Pre-production staging environment'),
+  ('production', 'Live production environment')
+ON CONFLICT (name) DO NOTHING;
+
+-- =============================================================================
+-- DEPLOYMENTS (Realistic deployment history)
+-- =============================================================================
+
+-- Recent production deployments (mix of successful and failed)
+INSERT INTO deployments (service_id, environment_id, version, status, deployed_by, started_at, completed_at, error_message, metadata) VALUES
+  -- Frontend deployments
+  (1, 3, 'v2.1.3', 'completed', 'alice@wander.com', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '2 hours' + INTERVAL '3 minutes', NULL, '{"commit": "a7f3c2d", "build_time": "3m12s"}'),
+  (1, 3, 'v2.1.2', 'completed', 'bob@wander.com', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day' + INTERVAL '2 minutes', NULL, '{"commit": "9b2e1f0", "build_time": "2m45s"}'),
+  (1, 3, 'v2.1.1', 'failed', 'alice@wander.com', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days' + INTERVAL '1 minute', 'Build failed: Missing environment variable NEXT_PUBLIC_API_URL', '{"commit": "4c8d9a1", "build_time": "1m20s"}'),
+  (1, 3, 'v2.1.0', 'completed', 'bob@wander.com', NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days' + INTERVAL '4 minutes', NULL, '{"commit": "3f1b8c2", "build_time": "4m05s"}'),
+
+  -- API deployments
+  (2, 3, 'v1.8.5', 'completed', 'charlie@wander.com', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '5 hours' + INTERVAL '1 minute', NULL, '{"commit": "e2d4f7a", "tests_passed": 127}'),
+  (2, 3, 'v1.8.4', 'completed', 'alice@wander.com', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day' + INTERVAL '2 minutes', NULL, '{"commit": "7a9c3e1", "tests_passed": 125}'),
+  (2, 3, 'v1.8.3', 'rolled_back', 'bob@wander.com', NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days' + INTERVAL '5 minutes', 'Performance degradation detected, rolling back', '{"commit": "2b5f9c0", "rollback_reason": "p95_latency_spike"}'),
+
+  -- Worker deployments
+  (3, 3, 'v0.9.2', 'completed', 'charlie@wander.com', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours' + INTERVAL '2 minutes', NULL, '{"commit": "f8a2c1d", "queue_cleared": true}'),
+  (3, 3, 'v0.9.1', 'completed', 'alice@wander.com', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days' + INTERVAL '1 minute', NULL, '{"commit": "1c7e4b9", "queue_cleared": true}'),
+
+  -- Analytics deployments
+  (4, 3, 'v1.2.0', 'completed', 'bob@wander.com', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day' + INTERVAL '3 minutes', NULL, '{"commit": "9d3f2a8", "migration_ran": true}');
+
+-- Staging deployments (more frequent, some in progress)
+INSERT INTO deployments (service_id, environment_id, version, status, deployed_by, started_at, completed_at, error_message, metadata) VALUES
+  (1, 2, 'v2.2.0-beta.1', 'in_progress', 'alice@wander.com', NOW() - INTERVAL '10 minutes', NULL, NULL, '{"commit": "b4e7d9c", "feature": "new_dashboard"}'),
+  (1, 2, 'v2.1.4-rc.1', 'completed', 'bob@wander.com', NOW() - INTERVAL '4 hours', NOW() - INTERVAL '4 hours' + INTERVAL '2 minutes', NULL, '{"commit": "c3a9f1e", "build_time": "2m30s"}'),
+  (2, 2, 'v1.9.0-beta.2', 'completed', 'charlie@wander.com', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour' + INTERVAL '1 minute', NULL, '{"commit": "a1b2c3d", "tests_passed": 132}'),
+  (2, 2, 'v1.9.0-beta.1', 'failed', 'alice@wander.com', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours' + INTERVAL '30 seconds', 'Integration test failure: auth middleware', '{"commit": "d4e5f6g", "tests_failed": 3}'),
+  (3, 2, 'v1.0.0-rc.1', 'completed', 'bob@wander.com', NOW() - INTERVAL '8 hours', NOW() - INTERVAL '8 hours' + INTERVAL '1 minute', NULL, '{"commit": "e7f8g9h", "major_version": true}'),
+  (4, 2, 'v1.3.0-beta.1', 'completed', 'charlie@wander.com', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours' + INTERVAL '2 minutes', NULL, '{"commit": "f9g0h1i", "new_metrics": ["conversion_rate", "churn_rate"]}');
+
+-- Development deployments (very frequent, lots of activity)
+INSERT INTO deployments (service_id, environment_id, version, status, deployed_by, started_at, completed_at, error_message, metadata) VALUES
+  (1, 1, 'v2.2.0-dev.45', 'completed', 'alice@wander.com', NOW() - INTERVAL '30 minutes', NOW() - INTERVAL '30 minutes' + INTERVAL '1 minute', NULL, '{"commit": "x1y2z3a", "branch": "feat/new-ui"}'),
+  (1, 1, 'v2.2.0-dev.44', 'failed', 'alice@wander.com', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '2 hours' + INTERVAL '45 seconds', 'TypeScript compilation error', '{"commit": "a2b3c4d", "branch": "feat/new-ui"}'),
+  (2, 1, 'v1.9.0-dev.89', 'completed', 'charlie@wander.com', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour' + INTERVAL '50 seconds', NULL, '{"commit": "b3c4d5e", "branch": "feature/caching"}'),
+  (2, 1, 'v1.9.0-dev.88', 'completed', 'charlie@wander.com', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours' + INTERVAL '1 minute', NULL, '{"commit": "c4d5e6f", "branch": "feature/caching"}'),
+  (3, 1, 'v1.0.0-dev.12', 'completed', 'bob@wander.com', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '5 hours' + INTERVAL '40 seconds', NULL, '{"commit": "d5e6f7g", "branch": "main"}'),
+  (4, 1, 'v1.3.0-dev.67', 'in_progress', 'bob@wander.com', NOW() - INTERVAL '5 minutes', NULL, NULL, '{"commit": "e6f7g8h", "branch": "analytics/realtime"}'),
+  (4, 1, 'v1.3.0-dev.66', 'completed', 'charlie@wander.com', NOW() - INTERVAL '7 hours', NOW() - INTERVAL '7 hours' + INTERVAL '1 minute 30 seconds', NULL, '{"commit": "f7g8h9i", "branch": "analytics/realtime"}');
+
+-- Some older historical data
+INSERT INTO deployments (service_id, environment_id, version, status, deployed_by, started_at, completed_at, error_message, metadata) VALUES
+  (1, 3, 'v2.0.0', 'completed', 'alice@wander.com', NOW() - INTERVAL '1 week', NOW() - INTERVAL '1 week' + INTERVAL '5 minutes', NULL, '{"commit": "g8h9i0j", "major_release": true}'),
+  (2, 3, 'v1.7.0', 'completed', 'charlie@wander.com', NOW() - INTERVAL '2 weeks', NOW() - INTERVAL '2 weeks' + INTERVAL '2 minutes', NULL, '{"commit": "h9i0j1k", "breaking_changes": false}'),
+  (3, 3, 'v0.8.0', 'completed', 'bob@wander.com', NOW() - INTERVAL '1 week', NOW() - INTERVAL '1 week' + INTERVAL '1 minute', NULL, '{"commit": "i0j1k2l", "performance_improvements": true}'),
+  (4, 3, 'v1.1.0', 'completed', 'charlie@wander.com', NOW() - INTERVAL '3 weeks', NOW() - INTERVAL '3 weeks' + INTERVAL '3 minutes', NULL, '{"commit": "j1k2l3m", "data_migration": true}');

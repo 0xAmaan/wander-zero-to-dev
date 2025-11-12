@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wander-config
+  namespace: wander
+  labels:
+    app: wander
+data:
+  # Database configuration
+  POSTGRES_DB: "wander_dev"
+
+  # Redis configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+
+  # Backend API configuration
+  API_PORT: "8080"
+  NODE_ENV: "production"
+  CACHE_TTL: "60"
+  CACHE_ENABLED: "true"
+
+  # Frontend configuration
+  NEXT_PUBLIC_API_URL: "http://backend-service:8080"

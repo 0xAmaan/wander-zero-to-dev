@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: wander
+  labels:
+    app: frontend
+    tier: web
+spec:
+  replicas: 2  # Run 2 instances for redundancy
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        tier: web
+    spec:
+      containers:
+      - name: frontend
+        image: wander-frontend:latest
+        imagePullPolicy: IfNotPresent  # Use local image from Kind
+
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+
+        env:
+        # Backend API URL (build-time env var, must be set during build or runtime)
+        - name: NEXT_PUBLIC_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: NEXT_PUBLIC_API_URL
+
+        - name: NODE_ENV
+          value: "production"
+
+        - name: PORT
+          value: "3000"
+
+        - name: HOSTNAME
+          value: "0.0.0.0"
+
+        resources:
+          requests:
+            cpu: 200m      # Minimum 0.2 CPU cores
+            memory: 256Mi  # Minimum 256MB RAM
+          limits:
+            cpu: 1000m     # Maximum 1 CPU core
+            memory: 1Gi    # Maximum 1GB RAM
+
+        # Readiness probe - when to start sending traffic
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Liveness probe - when to restart container
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
+      # Wait for backend to be ready
+      initContainers:
+      - name: wait-for-backend
+        image: curlimages/curl:latest
+        command:
+        - sh
+        - -c
+        - |
+          until curl -sf http://backend-service:8080/health; do
+            echo "Waiting for backend..."
+            sleep 2
+          done
+          echo "Backend is ready!"

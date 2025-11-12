@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: wander
+  labels:
+    app: postgres
+    tier: database
+spec:
+  serviceName: postgres  # Headless service name for stable network identity
+  replicas: 1  # Single instance for development
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        imagePullPolicy: IfNotPresent
+
+        ports:
+        - containerPort: 5432
+          name: postgres
+          protocol: TCP
+
+        env:
+        # Database name from ConfigMap
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: POSTGRES_DB
+
+        # Credentials from Secrets
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: wander-secrets
+              key: POSTGRES_USER
+
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wander-secrets
+              key: POSTGRES_PASSWORD
+
+        # Postgres configuration
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+
+        resources:
+          requests:
+            cpu: 250m      # Minimum 0.25 CPU cores
+            memory: 512Mi  # Minimum 512MB RAM
+          limits:
+            cpu: 1000m     # Maximum 1 CPU core
+            memory: 2Gi    # Maximum 2GB RAM
+
+        # Readiness probe - when to start sending traffic
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - wander
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Liveness probe - when to restart container
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - wander
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc

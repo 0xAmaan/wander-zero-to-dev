@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: wander
+  labels:
+    app: frontend
+    tier: web
+spec:
+  type: NodePort  # Expose to external traffic (accessible via node IP + port)
+  selector:
+    app: frontend  # Route to pods with this label
+  ports:
+  - port: 3000        # Service port
+    targetPort: 3000  # Container port
+    nodePort: 30000   # External port (accessible at http://localhost:30000 in Kind)
+    protocol: TCP
+    name: http

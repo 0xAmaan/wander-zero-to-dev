@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: wander
+  labels:
+    app: backend
+    tier: api
+spec:
+  replicas: 2  # Run 2 instances for redundancy
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        tier: api
+    spec:
+      containers:
+      - name: backend
+        image: wander-backend:latest
+        imagePullPolicy: IfNotPresent  # Use local image from Kind
+
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+
+        env:
+        # Non-sensitive config from ConfigMap
+        - name: API_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: API_PORT
+
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: NODE_ENV
+
+        - name: CACHE_TTL
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: CACHE_TTL
+
+        - name: CACHE_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: CACHE_ENABLED
+
+        # Sensitive config from Secrets
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: wander-secrets
+              key: DATABASE_URL
+
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: wander-secrets
+              key: REDIS_URL
+
+        - name: API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: wander-secrets
+              key: API_SECRET
+
+        resources:
+          requests:
+            cpu: 200m      # Minimum 0.2 CPU cores
+            memory: 256Mi  # Minimum 256MB RAM
+          limits:
+            cpu: 1000m     # Maximum 1 CPU core
+            memory: 1Gi    # Maximum 1GB RAM
+
+        # Readiness probe - when to start sending traffic
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Liveness probe - when to restart container
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
+      # Initialize database on first run
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:15-alpine
+        command:
+        - sh
+        - -c
+        - |
+          until pg_isready -h postgres-service -p 5432 -U wander; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+          echo "Postgres is ready!"
