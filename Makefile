@@ -110,6 +110,40 @@ dev: check
 	@echo "  Starting Development Environment"
 	@echo "═══════════════════════════════════════════════"
 	@echo ""
+	@# Install dependencies if needed
+	@echo "→ Checking dependencies..."
+	@if [ ! -d "backend/node_modules" ] || [ ! -d "frontend/node_modules" ]; then \
+		echo "→ Installing dependencies..."; \
+		bun install; \
+	else \
+		echo "✓ Dependencies already installed"; \
+	fi
+	@echo ""
+	@# Create .env files from examples if they don't exist
+	@echo "→ Checking environment files..."
+	@if [ ! -f "backend/.env" ]; then \
+		if [ -f "backend/.env.example" ]; then \
+			echo "→ Creating backend/.env from backend/.env.example..."; \
+			cp backend/.env.example backend/.env; \
+			echo "✓ Created backend/.env"; \
+		else \
+			echo "⚠ Warning: backend/.env.example not found"; \
+		fi; \
+	else \
+		echo "✓ backend/.env exists"; \
+	fi
+	@if [ ! -f "frontend/.env.local" ]; then \
+		if [ -f "frontend/.env.example" ]; then \
+			echo "→ Creating frontend/.env.local from frontend/.env.example..."; \
+			cp frontend/.env.example frontend/.env.local; \
+			echo "✓ Created frontend/.env.local"; \
+		else \
+			echo "⚠ Warning: frontend/.env.example not found"; \
+		fi; \
+	else \
+		echo "✓ frontend/.env.local exists"; \
+	fi
+	@echo ""
 	@# Start PostgreSQL and Redis
 	@echo "→ Starting PostgreSQL and Redis..."
 	@docker compose -f docker-compose.dev.yml up -d
