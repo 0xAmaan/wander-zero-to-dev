@@ -7,6 +7,7 @@
     "install:all": "cd backend && bun install && cd ../frontend && bun install",
     "dev:backend": "cd backend && bun run dev",
     "dev:frontend": "cd frontend && bun run dev",
+    "dev": "bun run --bun dev:backend & bun run --bun dev:frontend",
     "build:backend": "cd backend && bun run build",
     "build:frontend": "cd frontend && bun run build"
   },

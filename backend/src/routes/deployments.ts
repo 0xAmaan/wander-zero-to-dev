@@ -292,4 +292,118 @@ deployments.post("/", async (c) => {
   }
 });
 
+/**
+ * PATCH /api/deployments/:id
+ *
+ * Update an existing deployment
+ *
+ * Request body (all fields optional):
+ * {
+ *   version?: string,
+ *   status?: string,
+ *   deployed_by?: string,
+ *   error_message?: string,
+ *   metadata?: object
+ * }
+ */
+deployments.patch("/:id", async (c) => {
+  const id = parseInt(c.req.param("id"), 10);
+
+  if (isNaN(id)) {
+    throw new HTTPException(400, { message: "Invalid deployment ID" });
+  }
+
+  try {
+    const body = await c.req.json();
+
+    // Check if deployment exists
+    const existing = await sql`
+      SELECT id FROM deployments WHERE id = ${id}
+    `;
+
+    if (existing.length === 0) {
+      throw new HTTPException(404, { message: "Deployment not found" });
+    }
+
+    // Build simple update - just update what's provided
+    const updates: any = {};
+
+    if (body.version !== undefined) updates.version = body.version;
+    if (body.status !== undefined) {
+      updates.status = body.status;
+      // If status is completed or failed, set completed_at
+      if (["completed", "failed", "rolled_back"].includes(body.status)) {
+        updates.completed_at = new Date();
+      }
+    }
+    if (body.deployed_by !== undefined) updates.deployed_by = body.deployed_by;
+    if (body.error_message !== undefined)
+      updates.error_message = body.error_message;
+    if (body.metadata !== undefined) updates.metadata = body.metadata;
+
+    if (Object.keys(updates).length === 0) {
+      throw new HTTPException(400, { message: "No fields to update" });
+    }
+
+    // Execute update - construct query manually
+    const keys = Object.keys(updates);
+    const values = Object.values(updates);
+    const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(", ");
+
+    const result = await sql.unsafe(
+      `UPDATE deployments SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
+      [...values, id],
+    );
+
+    // Clear caches
+    await clearCachePattern("cache:deployments:*");
+
+    return c.json({
+      data: result[0],
+      message: "Deployment updated successfully",
+    });
+  } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
+    console.error("Error updating deployment:", error);
+    throw new HTTPException(500, { message: "Failed to update deployment" });
+  }
+});
+
+/**
+ * DELETE /api/deployments/:id
+ *
+ * Delete a deployment
+ */
+deployments.delete("/:id", async (c) => {
+  const id = parseInt(c.req.param("id"), 10);
+
+  if (isNaN(id)) {
+    throw new HTTPException(400, { message: "Invalid deployment ID" });
+  }
+
+  try {
+    const result = await sql`
+      DELETE FROM deployments
+      WHERE id = ${id}
+      RETURNING id
+    `;
+
+    if (result.length === 0) {
+      throw new HTTPException(404, { message: "Deployment not found" });
+    }
+
+    // Clear caches
+    await clearCachePattern("cache:deployments:*");
+
+    return c.json({
+      message: "Deployment deleted successfully",
+      id: result[0].id,
+    });
+  } catch (error: any) {
+    if (error instanceof HTTPException) throw error;
+    console.error("Error deleting deployment:", error);
+    throw new HTTPException(500, { message: "Failed to delete deployment" });
+  }
+});
+
 export default deployments;

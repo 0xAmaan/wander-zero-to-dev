@@ -1,0 +1,111 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-migration
+  namespace: wander
+  labels:
+    app: postgres
+    tier: database
+    component: migration
+spec:
+  # Don't retry automatically - let user decide
+  backoffLimit: 0
+
+  # Clean up completed jobs after 1 hour
+  ttlSecondsAfterFinished: 3600
+
+  template:
+    metadata:
+      labels:
+        app: postgres
+        tier: database
+        component: migration
+    spec:
+      restartPolicy: Never
+
+      # Init container: Wait for PostgreSQL to be ready
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:15-alpine
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL to be ready..."
+          until pg_isready -h postgres-service -U wander -d wander_dev; do
+            echo "PostgreSQL is unavailable - sleeping"
+            sleep 2
+          done
+          echo "PostgreSQL is ready!"
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wander-secrets
+              key: POSTGRES_PASSWORD
+
+      containers:
+      - name: migrate
+        image: postgres:15-alpine
+        command:
+        - sh
+        - -c
+        - |
+          echo "==================================="
+          echo "Running database migrations..."
+          echo "==================================="
+
+          # Run migrations
+          psql "$DATABASE_URL" -f /migrations/001_initial.sql
+
+          if [ $? -eq 0 ]; then
+            echo "✓ Migrations completed successfully"
+          else
+            echo "✗ Migration failed"
+            exit 1
+          fi
+
+          echo ""
+          echo "==================================="
+          echo "Seeding database..."
+          echo "==================================="
+
+          # Run seed data
+          psql "$DATABASE_URL" -f /migrations/seed.sql
+
+          if [ $? -eq 0 ]; then
+            echo "✓ Seed data inserted successfully"
+          else
+            echo "✗ Seed failed"
+            exit 1
+          fi
+
+          echo ""
+          echo "==================================="
+          echo "Database initialization complete!"
+          echo "==================================="
+
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: wander-secrets
+              key: DATABASE_URL
+
+        volumeMounts:
+        - name: migrations
+          mountPath: /migrations
+          readOnly: true
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
+      volumes:
+      - name: migrations
+        configMap:
+          name: postgres-migrations

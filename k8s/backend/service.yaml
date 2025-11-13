@@ -7,12 +7,13 @@ metadata:
     app: backend
     tier: api
 spec:
-  type: ClusterIP  # Internal service only
+  type: NodePort  # Expose to external traffic (accessible via node IP + port)
   selector:
     app: backend  # Route to pods with this label
   ports:
   - port: 8080
     targetPort: 8080
+    nodePort: 30080  # External port (accessible at http://localhost:30080 in Kind)
     protocol: TCP
     name: http
   sessionAffinity: None  # Load balance requests across all pods

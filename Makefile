@@ -1,4 +1,4 @@
-.PHONY: help dev down logs clean setup-backend k8s-build k8s-deploy k8s-status k8s-logs k8s-down k8s-clean
+.PHONY: help check dev start down logs clean setup-backend k8s-cluster k8s-build k8s-deploy k8s-status k8s-logs k8s-down k8s-clean
 
 # Default target
 help:
@@ -7,14 +7,19 @@ help:
 	@echo "  Wander - Zero to Running Developer Environment"
 	@echo "═══════════════════════════════════════════════"
 	@echo ""
+	@echo "Getting Started:"
+	@echo "  make check        - Check if prerequisites are installed"
+	@echo "  make start        - Start EVERYTHING (DB + Redis + Backend + Frontend)"
+	@echo ""
 	@echo "Docker Compose Commands (Local Dev):"
-	@echo "  make dev          - Start entire development environment"
+	@echo "  make dev          - Start infrastructure (DB + Redis)"
 	@echo "  make down         - Stop all services"
 	@echo "  make logs         - Show logs from all services"
 	@echo "  make clean        - Stop services and remove volumes"
 	@echo "  make setup-backend - Set up backend only (deps + DB)"
 	@echo ""
 	@echo "Kubernetes Commands (Kind Cluster):"
+	@echo "  make k8s-cluster  - Create Kind cluster with port mappings"
 	@echo "  make k8s-build    - Build Docker images and load into Kind"
 	@echo "  make k8s-deploy   - Deploy all manifests to Kind cluster"
 	@echo "  make k8s-status   - Check deployment status"
@@ -23,23 +28,91 @@ help:
 	@echo "  make k8s-clean    - Tear down entire Kind cluster"
 	@echo ""
 
+# Check prerequisites (interactive version)
+check:
+	@echo ""
+	@echo "═══════════════════════════════════════════════"
+	@echo "  Checking Prerequisites"
+	@echo "═══════════════════════════════════════════════"
+	@echo ""
+	@# Loop until all prerequisites are met
+	@while true; do \
+		missing=0; \
+		\
+		printf "→ Docker: "; \
+		if command -v docker > /dev/null 2>&1; then \
+			echo "✓ Installed"; \
+		else \
+			echo "✗ Not found"; \
+			missing=1; \
+		fi; \
+		\
+		if command -v docker > /dev/null 2>&1; then \
+			printf "→ Docker daemon: "; \
+			if docker info > /dev/null 2>&1; then \
+				echo "✓ Running"; \
+			else \
+				echo "✗ Not running"; \
+				missing=1; \
+			fi; \
+		fi; \
+		\
+		printf "→ Bun: "; \
+		if command -v bun > /dev/null 2>&1; then \
+			echo "✓ Installed ($$(bun --version))"; \
+		else \
+			echo "✗ Not found"; \
+			missing=1; \
+		fi; \
+		\
+		if [ $$missing -eq 0 ]; then \
+			echo ""; \
+			echo "✓ All prerequisites are installed!"; \
+			echo ""; \
+			break; \
+		fi; \
+		\
+		echo ""; \
+		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+		echo "Missing prerequisites detected. Please install:"; \
+		echo ""; \
+		if ! command -v docker > /dev/null 2>&1; then \
+			echo "📦 Docker Desktop:"; \
+			echo "  macOS:   https://docs.docker.com/desktop/install/mac-install/"; \
+			echo "  Linux:   https://docs.docker.com/desktop/install/linux/"; \
+			echo "  Windows: https://docs.docker.com/desktop/install/windows-install/"; \
+			echo ""; \
+		fi; \
+		if command -v docker > /dev/null 2>&1 && ! docker info > /dev/null 2>&1; then \
+			echo "🐳 Docker daemon not running:"; \
+			echo "  → Start Docker Desktop application"; \
+			echo ""; \
+		fi; \
+		if ! command -v bun > /dev/null 2>&1; then \
+			echo "⚡ Bun runtime:"; \
+			echo "  macOS/Linux: curl -fsSL https://bun.sh/install | bash"; \
+			echo "  Windows:     powershell -c \"irm bun.sh/install.ps1 | iex\""; \
+			echo "  Alternative: Use Node.js v18+ instead"; \
+			echo ""; \
+		fi; \
+		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+		echo ""; \
+		read -p "Press Enter after installing to re-check (or Ctrl+C to exit)... " _; \
+		echo ""; \
+		echo "Rechecking..."; \
+		echo ""; \
+	done
+
 # Start development environment (zero-to-running!)
-dev:
+dev: check
 	@echo ""
 	@echo "═══════════════════════════════════════════════"
 	@echo "  Starting Development Environment"
 	@echo "═══════════════════════════════════════════════"
 	@echo ""
-	@# Check Docker is running
-	@if ! docker info > /dev/null 2>&1; then \
-		echo "✗ Docker is not running. Please start Docker Desktop."; \
-		exit 1; \
-	fi
-	@echo "✓ Docker is running"
-	@echo ""
 	@# Start PostgreSQL and Redis
 	@echo "→ Starting PostgreSQL and Redis..."
-	@docker-compose -f docker-compose.dev.yml up -d
+	@docker compose -f docker-compose.dev.yml up -d
 	@echo ""
 	@echo "→ Waiting for services to be ready..."
 	@# Wait for PostgreSQL
@@ -94,21 +167,35 @@ dev:
 	@echo "Start the frontend:"
 	@echo "  cd frontend && bun run dev"
 	@echo ""
+	@echo "Or start everything at once:"
+	@echo "  make start"
+	@echo ""
+
+# Start everything (infrastructure + backend + frontend)
+start: dev
+	@echo ""
+	@echo "═══════════════════════════════════════════════"
+	@echo "  Starting Backend + Frontend"
+	@echo "═══════════════════════════════════════════════"
+	@echo ""
+	@echo "→ Launching backend and frontend servers..."
+	@bun run dev
+	@echo ""
 
 # Stop all services
 down:
 	@echo "→ Stopping services..."
-	@docker-compose -f docker-compose.dev.yml down
+	@docker compose -f docker-compose.dev.yml down
 	@echo "✓ Services stopped"
 
 # Show logs
 logs:
-	@docker-compose -f docker-compose.dev.yml logs -f
+	@docker compose -f docker-compose.dev.yml logs -f
 
 # Clean everything (including volumes)
 clean:
 	@echo "→ Stopping and removing services..."
-	@docker-compose -f docker-compose.dev.yml down -v
+	@docker compose -f docker-compose.dev.yml down -v
 	@echo "✓ Cleanup complete"
 
 # Backend-only setup (for development)
@@ -121,6 +208,37 @@ setup-backend:
 # ═══════════════════════════════════════════════
 # Kubernetes Commands (Kind Cluster)
 # ═══════════════════════════════════════════════
+
+# Create Kind cluster with port mappings
+k8s-cluster:
+	@echo ""
+	@echo "═══════════════════════════════════════════════"
+	@echo "  Creating Kind Cluster"
+	@echo "═══════════════════════════════════════════════"
+	@echo ""
+	@# Check if cluster already exists
+	@if kind get clusters 2>/dev/null | grep -q "^kind$$"; then \
+		echo "⚠ Kind cluster 'kind' already exists."; \
+		echo ""; \
+		echo "To recreate with proper port mappings:"; \
+		echo "  make k8s-clean"; \
+		echo "  make k8s-cluster"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo "→ Creating Kind cluster with port mappings..."
+	@kind create cluster --config=kind-config.yaml
+	@echo ""
+	@echo "✓ Kind cluster created successfully"
+	@echo ""
+	@echo "Port mappings:"
+	@echo "  • localhost:30000 → Frontend (Next.js)"
+	@echo "  • localhost:30080 → Backend API (Hono)"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  make k8s-build"
+	@echo "  make k8s-deploy"
+	@echo ""
 
 # Build Docker images and load into Kind cluster
 k8s-build:
@@ -136,7 +254,11 @@ k8s-build:
 	fi
 	@# Check Kind cluster exists
 	@if ! kind get clusters 2>/dev/null | grep -q "^kind$$"; then \
-		echo "✗ Kind cluster 'kind' not found. Create one with: kind create cluster"; \
+		echo "✗ Kind cluster 'kind' not found."; \
+		echo ""; \
+		echo "Create it with:"; \
+		echo "  make k8s-cluster"; \
+		echo ""; \
 		exit 1; \
 	fi
 	@echo "→ Building backend image..."

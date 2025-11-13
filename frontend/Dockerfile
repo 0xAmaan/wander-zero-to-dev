@@ -27,14 +27,20 @@ COPY . .
 # Disable Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Set API URL for build time (required for NEXT_PUBLIC_ variables)
+# This will be embedded in the client-side JavaScript bundle
+ENV NEXT_PUBLIC_API_URL=http://localhost:30080
+
 # Build the Next.js application
 # This creates .next/standalone directory with minimal dependencies
-RUN bun run build
+RUN bun run build && \
+    echo "=== Checking standalone output ===" && \
+    ls -la .next/standalone/ || true
 
 # ============================================
 # Stage 3: Runtime - Production server
 # ============================================
-FROM node:22-alpine AS runtime
+FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
@@ -43,8 +49,8 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy only necessary production files from builder
-# The standalone output includes a minimal server
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# Next.js 16 outputs standalone to .next/standalone/app/ (based on WORKDIR)
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/app ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Create public directory (frontend doesn't have public assets yet)

@@ -7,10 +7,18 @@ import type {
   DeploymentFilters,
 } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use internal Kubernetes service for server-side calls (SSR)
+// Use localhost:30080 for client-side calls (browser)
+const API_URL =
+  typeof window === "undefined"
+    ? process.env.API_URL_INTERNAL || "http://backend-service:8080" // Server-side (inside K8s pod)
+    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:30080"; // Client-side (browser)
 
 class ApiError extends Error {
-  constructor(message: string, public status?: number) {
+  constructor(
+    message: string,
+    public status?: number,
+  ) {
     super(message);
     this.name = "ApiError";
   }
@@ -18,7 +26,7 @@ class ApiError extends Error {
 
 const fetchApi = async <T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<T> => {
   try {
     const url = `${API_URL}${endpoint}`;
@@ -35,7 +43,7 @@ const fetchApi = async <T>(
     if (!response.ok) {
       throw new ApiError(
         `API request failed: ${response.statusText}`,
-        response.status
+        response.status,
       );
     }
 
@@ -47,7 +55,7 @@ const fetchApi = async <T>(
     throw new ApiError(
       `Network error: ${
         error instanceof Error ? error.message : "Unknown error"
-      }`
+      }`,
     );
   }
 };
@@ -63,7 +71,7 @@ export const fetchHealth = async (): Promise<HealthStatus> => {
  * Fetch all deployments with optional filters
  */
 export const fetchDeployments = async (
-  filters?: DeploymentFilters
+  filters?: DeploymentFilters,
 ): Promise<ApiResponse<Deployment[]>> => {
   const params = new URLSearchParams();
   if (filters?.environment) params.set("environment", filters.environment);
@@ -80,7 +88,7 @@ export const fetchDeployments = async (
  * Fetch a single deployment by ID
  */
 export const fetchDeployment = async (
-  id: number
+  id: number,
 ): Promise<ApiResponse<Deployment>> => {
   return fetchApi<ApiResponse<Deployment>>(`/api/deployments/${id}`);
 };

@@ -19,6 +19,8 @@ A production-grade, Kubernetes-based development environment that gets you from 
 - **Bun** - [Install Bun](https://bun.sh/) (or Node.js v18+)
 - **Make** - Built into macOS/Linux
 
+Not sure if you have everything? Run `make check` to find out!
+
 ### Start Development Environment
 
 ```bash
@@ -26,22 +28,23 @@ A production-grade, Kubernetes-based development environment that gets you from 
 git clone <repo-url>
 cd wander-ztrde
 
-# Start everything (truly zero-to-running!)
-make dev
+# (Optional) Check if you have everything installed
+make check
 
-# Start the backend API
-cd backend && bun run dev
-
-# Start the frontend (in another terminal)
-cd frontend && bun run dev
+# Start EVERYTHING in one command (truly zero-to-running!)
+make start
 ```
 
-That's it! The `make dev` command will:
-1. ✅ Check Docker is running
+That's it! The `make start` command will:
+1. ✅ Check prerequisites (Docker, Bun, Make)
 2. ✅ Start PostgreSQL and Redis in containers
 3. ✅ Wait for services to be healthy
 4. ✅ Run database migrations and seed data automatically
-5. ✅ Print helpful next steps
+5. ✅ Start the backend API on `http://localhost:8080`
+6. ✅ Start the frontend dashboard on `http://localhost:3000`
+7. ✅ Open your browser - everything just works!
+
+**If something is missing**, the check will tell you exactly what to install and how.
 
 ## Project Structure
 
@@ -67,7 +70,8 @@ wander-ztrde/
 ### Development
 
 ```bash
-make dev          # Start development environment (PostgreSQL + Redis)
+make start        # Start EVERYTHING (DB + Redis + Backend + Frontend)
+make dev          # Start infrastructure only (PostgreSQL + Redis)
 make down         # Stop all services
 make logs         # Show logs from all services
 make clean        # Stop services and remove data volumes
@@ -125,6 +129,13 @@ Once running, the API is available at `http://localhost:8080`:
 - `DELETE /api/cache` - Clear Redis cache
 
 ## Troubleshooting
+
+### Missing prerequisites
+If you see errors about missing tools, run:
+```bash
+make check
+```
+This will tell you exactly what's missing and provide installation links.
 
 ### Docker not running
 ```bash

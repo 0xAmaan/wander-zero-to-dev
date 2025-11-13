@@ -20,4 +20,5 @@ data:
   CACHE_ENABLED: "true"
 
   # Frontend configuration
-  NEXT_PUBLIC_API_URL: "http://backend-service:8080"
+  # Use localhost:30080 for client-side fetches (browser) when running in Kind
+  NEXT_PUBLIC_API_URL: "http://localhost:30080"

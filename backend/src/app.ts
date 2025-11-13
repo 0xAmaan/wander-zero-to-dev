@@ -19,7 +19,11 @@ const app = new Hono();
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"], // Next.js and Vite dev servers
+    origin: [
+      "http://localhost:3000", // Next.js dev server (local)
+      "http://localhost:5173", // Vite dev server
+      "http://localhost:30000", // Next.js in Kubernetes (Kind NodePort)
+    ],
     credentials: true,
   }),
 );
@@ -50,6 +54,7 @@ import deployments from "./routes/deployments.js";
 import services from "./routes/services.js";
 import environments from "./routes/environments.js";
 import cache from "./routes/cache.js";
+import docker from "./routes/docker.js";
 
 // Mount routes
 app.route("/health", health);
@@ -57,6 +62,7 @@ app.route("/api/deployments", deployments);
 app.route("/api/services", services);
 app.route("/api/environments", environments);
 app.route("/api/cache", cache);
+app.route("/api/docker", docker);
 
 // ============================================================================
 // ERROR HANDLING

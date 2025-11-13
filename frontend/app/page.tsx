@@ -4,6 +4,8 @@ import { StatsCards } from "@/components/StatsCards";
 import { DeploymentsList } from "@/components/DeploymentsList";
 import { RefreshButton } from "@/components/RefreshButton";
 import { AutoRefreshWrapper } from "@/components/AutoRefreshWrapper";
+import { DevEnvironmentStatus } from "@/components/DevEnvironmentStatus";
+import { DeploymentsListClient } from "@/components/DeploymentsListClient";
 
 // Loading components
 const HealthPanelSkeleton = () => {
@@ -58,12 +60,14 @@ const DashboardPage = () => {
             <div>
               <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
               <p className="text-muted-foreground mt-2">
-                Monitor service health and deployment activity across all
-                environments
+                Monitor your local dev environment and demo deployment tracker
               </p>
             </div>
             <RefreshButton />
           </div>
+
+          {/* Dev Environment Status - Real data */}
+          <DevEnvironmentStatus />
 
           {/* Service Health Panel */}
           <Suspense fallback={<HealthPanelSkeleton />}>
@@ -75,10 +79,8 @@ const DashboardPage = () => {
             <StatsCards />
           </Suspense>
 
-          {/* Deployments List */}
-          <Suspense fallback={<DeploymentsListSkeleton />}>
-            <DeploymentsList />
-          </Suspense>
+          {/* Deployments List - Editable demo data */}
+          <DeploymentsListClient />
         </div>
       </div>
     </AutoRefreshWrapper>
