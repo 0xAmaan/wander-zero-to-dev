@@ -133,16 +133,12 @@ dev: check
 	else \
 		echo "✓ backend/.env exists"; \
 	fi
-	@if [ ! -f "frontend/.env.local" ]; then \
-		if [ -f "frontend/.env.example" ]; then \
-			echo "→ Creating frontend/.env.local from frontend/.env.example..."; \
-			cp frontend/.env.example frontend/.env.local; \
-			echo "✓ Created frontend/.env.local"; \
-		else \
-			echo "⚠ Warning: frontend/.env.example not found"; \
-		fi; \
+	@echo "→ Setting up frontend/.env.local for Docker Compose..."
+	@if [ -f "frontend/.env.local.docker" ]; then \
+		cp frontend/.env.local.docker frontend/.env.local; \
+		echo "✓ Created frontend/.env.local (Docker Compose mode)"; \
 	else \
-		echo "✓ frontend/.env.local exists"; \
+		echo "⚠ Warning: frontend/.env.local.docker not found"; \
 	fi
 	@echo ""
 	@# Start PostgreSQL and Redis
@@ -195,6 +191,9 @@ dev: check
 	@echo "Services running:"
 	@echo "  • PostgreSQL: localhost:5432"
 	@echo "  • Redis:      localhost:6379"
+	@echo ""
+	@echo "Database Connection (Beekeeper Studio):"
+	@echo "  postgresql://wander:wander123@localhost:5432/wander_dev"
 	@echo ""
 	@echo "Start the backend:"
 	@echo "  cd backend && bun run dev"
@@ -266,6 +265,15 @@ k8s-start:
 		exit 1; \
 	fi
 	@echo "✓ Prerequisites OK"
+	@echo ""
+	@# Setup frontend env for Kubernetes
+	@echo "→ Setting up frontend/.env.local for Kubernetes..."
+	@if [ -f "frontend/.env.local.k8s" ]; then \
+		cp frontend/.env.local.k8s frontend/.env.local; \
+		echo "✓ Created frontend/.env.local (Kubernetes mode)"; \
+	else \
+		echo "⚠ Warning: frontend/.env.local.k8s not found"; \
+	fi
 	@echo ""
 	@# Step 1: Create cluster if needed
 	@if kind get clusters 2>/dev/null | grep -q "^kind$$"; then \

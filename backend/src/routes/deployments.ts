@@ -11,15 +11,16 @@ const deployments = new Hono();
  * Query parameters:
  * - environment: Filter by environment name (e.g., "production")
  * - status: Filter by status (e.g., "completed", "failed")
- * - limit: Number of results to return (default: 50, max: 100)
+ * - limit: Number of results to return (optional, no default limit)
  */
 deployments.get("/", async (c) => {
   const environment = c.req.query("environment");
   const status = c.req.query("status");
-  const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam, 10) : null;
 
   // Generate cache key based on query params
-  const cacheKey = `cache:deployments:list:${environment || "all"}:${status || "all"}:${limit}`;
+  const cacheKey = `cache:deployments:list:${environment || "all"}:${status || "all"}:${limit || "all"}`;
 
   try {
     // Try cache first
@@ -35,93 +36,45 @@ deployments.get("/", async (c) => {
     // Build query based on filters
     let results;
 
+    // Build base query parts
+    const selectClause = sql`
+      SELECT
+        d.id,
+        d.version,
+        d.status,
+        d.deployed_by,
+        d.started_at,
+        d.completed_at,
+        d.error_message,
+        d.metadata,
+        s.name as service_name,
+        s.description as service_description,
+        e.name as environment_name
+      FROM deployments d
+      JOIN services s ON d.service_id = s.id
+      JOIN environments e ON d.environment_id = e.id
+    `;
+
     if (environment && status) {
       // Both filters
-      results = await sql`
-        SELECT
-          d.id,
-          d.version,
-          d.status,
-          d.deployed_by,
-          d.started_at,
-          d.completed_at,
-          d.error_message,
-          d.metadata,
-          s.name as service_name,
-          s.description as service_description,
-          e.name as environment_name
-        FROM deployments d
-        JOIN services s ON d.service_id = s.id
-        JOIN environments e ON d.environment_id = e.id
-        WHERE e.name = ${environment} AND d.status = ${status}
-        ORDER BY d.started_at DESC
-        LIMIT ${limit}
-      `;
+      results = limit
+        ? await sql`${selectClause} WHERE e.name = ${environment} AND d.status = ${status} ORDER BY d.started_at DESC LIMIT ${limit}`
+        : await sql`${selectClause} WHERE e.name = ${environment} AND d.status = ${status} ORDER BY d.started_at DESC`;
     } else if (environment) {
       // Environment filter only
-      results = await sql`
-        SELECT
-          d.id,
-          d.version,
-          d.status,
-          d.deployed_by,
-          d.started_at,
-          d.completed_at,
-          d.error_message,
-          d.metadata,
-          s.name as service_name,
-          s.description as service_description,
-          e.name as environment_name
-        FROM deployments d
-        JOIN services s ON d.service_id = s.id
-        JOIN environments e ON d.environment_id = e.id
-        WHERE e.name = ${environment}
-        ORDER BY d.started_at DESC
-        LIMIT ${limit}
-      `;
+      results = limit
+        ? await sql`${selectClause} WHERE e.name = ${environment} ORDER BY d.started_at DESC LIMIT ${limit}`
+        : await sql`${selectClause} WHERE e.name = ${environment} ORDER BY d.started_at DESC`;
     } else if (status) {
       // Status filter only
-      results = await sql`
-        SELECT
-          d.id,
-          d.version,
-          d.status,
-          d.deployed_by,
-          d.started_at,
-          d.completed_at,
-          d.error_message,
-          d.metadata,
-          s.name as service_name,
-          s.description as service_description,
-          e.name as environment_name
-        FROM deployments d
-        JOIN services s ON d.service_id = s.id
-        JOIN environments e ON d.environment_id = e.id
-        WHERE d.status = ${status}
-        ORDER BY d.started_at DESC
-        LIMIT ${limit}
-      `;
+      results = limit
+        ? await sql`${selectClause} WHERE d.status = ${status} ORDER BY d.started_at DESC LIMIT ${limit}`
+        : await sql`${selectClause} WHERE d.status = ${status} ORDER BY d.started_at DESC`;
     } else {
       // No filters
-      results = await sql`
-        SELECT
-          d.id,
-          d.version,
-          d.status,
-          d.deployed_by,
-          d.started_at,
-          d.completed_at,
-          d.error_message,
-          d.metadata,
-          s.name as service_name,
-          s.description as service_description,
-          e.name as environment_name
-        FROM deployments d
-        JOIN services s ON d.service_id = s.id
-        JOIN environments e ON d.environment_id = e.id
-        ORDER BY d.started_at DESC
-        LIMIT ${limit}
-      `;
+      results = limit
+        ? await sql`${selectClause} ORDER BY d.started_at DESC LIMIT ${limit}`
+        : await sql`${selectClause} ORDER BY d.started_at DESC`;
     }
 
     // Cache the results for 60 seconds
