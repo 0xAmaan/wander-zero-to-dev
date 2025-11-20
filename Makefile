@@ -1,4 +1,4 @@
-.PHONY: help check dev start down logs clean setup-backend k8s-cluster k8s-build k8s-deploy k8s-status k8s-logs k8s-down k8s-clean
+.PHONY: help check dev start down logs clean setup-backend k8s-start k8s-cluster k8s-build k8s-deploy k8s-status k8s-logs k8s-down k8s-clean
 
 # Default target
 help:
@@ -19,6 +19,7 @@ help:
 	@echo "  make setup-backend - Set up backend only (deps + DB)"
 	@echo ""
 	@echo "Kubernetes Commands (Kind Cluster):"
+	@echo "  make k8s-start    - Start EVERYTHING in Kubernetes (cluster + build + deploy)"
 	@echo "  make k8s-cluster  - Create Kind cluster with port mappings"
 	@echo "  make k8s-build    - Build Docker images and load into Kind"
 	@echo "  make k8s-deploy   - Deploy all manifests to Kind cluster"
@@ -242,6 +243,64 @@ setup-backend:
 # ═══════════════════════════════════════════════
 # Kubernetes Commands (Kind Cluster)
 # ═══════════════════════════════════════════════
+
+# Start everything in Kubernetes (zero-to-running!)
+k8s-start:
+	@echo ""
+	@echo "═══════════════════════════════════════════════"
+	@echo "  Kubernetes Zero-to-Running"
+	@echo "═══════════════════════════════════════════════"
+	@echo ""
+	@# Check prerequisites
+	@printf "→ Checking prerequisites...\n"
+	@if ! command -v kind > /dev/null 2>&1; then \
+		echo "✗ kind not found. Install with: brew install kind"; \
+		exit 1; \
+	fi
+	@if ! command -v kubectl > /dev/null 2>&1; then \
+		echo "✗ kubectl not found. Install with: brew install kubectl"; \
+		exit 1; \
+	fi
+	@if ! docker info > /dev/null 2>&1; then \
+		echo "✗ Docker is not running. Please start Docker Desktop."; \
+		exit 1; \
+	fi
+	@echo "✓ Prerequisites OK"
+	@echo ""
+	@# Step 1: Create cluster if needed
+	@if kind get clusters 2>/dev/null | grep -q "^kind$$"; then \
+		echo "✓ Kind cluster 'kind' already exists"; \
+	else \
+		echo "→ Creating Kind cluster..."; \
+		$(MAKE) k8s-cluster; \
+	fi
+	@echo ""
+	@# Step 2: Build and load images
+	@echo "→ Building Docker images..."
+	@$(MAKE) k8s-build
+	@echo ""
+	@# Step 3: Deploy everything
+	@echo "→ Deploying to Kubernetes..."
+	@$(MAKE) k8s-deploy
+	@echo ""
+	@echo "═══════════════════════════════════════════════"
+	@echo "  ✓ Kubernetes Environment Ready!"
+	@echo "═══════════════════════════════════════════════"
+	@echo ""
+	@echo "Access your application:"
+	@echo "  Frontend: http://localhost:30000"
+	@echo "  Backend:  http://localhost:30080"
+	@echo ""
+	@echo "Check status:"
+	@echo "  make k8s-status"
+	@echo ""
+	@echo "View logs:"
+	@echo "  make k8s-logs"
+	@echo ""
+	@echo "Tear down:"
+	@echo "  make k8s-down     (delete resources)"
+	@echo "  make k8s-clean    (delete entire cluster)"
+	@echo ""
 
 # Create Kind cluster with port mappings
 k8s-cluster:
