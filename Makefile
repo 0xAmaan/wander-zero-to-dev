@@ -146,10 +146,10 @@ dev: check
 	@docker compose -f docker-compose.dev.yml up -d
 	@echo ""
 	@echo "→ Waiting for services to be ready..."
-	@# Wait for PostgreSQL
-	@printf "  - PostgreSQL: "
+	@# Wait for PostgreSQL server to be ready
+	@printf "  - PostgreSQL server: "
 	@for i in $$(seq 1 30); do \
-		if docker exec wander-postgres-dev pg_isready -U wander > /dev/null 2>&1; then \
+		if docker exec wander-postgres-dev pg_isready > /dev/null 2>&1; then \
 			echo "✓ Ready"; \
 			break; \
 		fi; \
@@ -157,6 +157,23 @@ dev: check
 		sleep 1; \
 		if [ $$i -eq 30 ]; then \
 			echo " ✗ Timeout"; \
+			exit 1; \
+		fi; \
+	done
+	@# Wait for database and user initialization
+	@printf "  - Database & user initialization: "
+	@for i in $$(seq 1 30); do \
+		if docker exec wander-postgres-dev psql -U wander -d wander_dev -c "SELECT 1" > /dev/null 2>&1; then \
+			echo "✓ Ready"; \
+			break; \
+		fi; \
+		printf "."; \
+		sleep 1; \
+		if [ $$i -eq 30 ]; then \
+			echo " ✗ Timeout"; \
+			echo ""; \
+			echo "Error: Database user 'wander' or database 'wander_dev' was not created."; \
+			echo "Try running: make clean && make dev"; \
 			exit 1; \
 		fi; \
 	done
