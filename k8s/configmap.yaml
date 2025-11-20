@@ -22,3 +22,5 @@ data:
   # Frontend configuration
   # Use localhost:30080 for client-side fetches (browser) when running in Kind
   NEXT_PUBLIC_API_URL: "http://localhost:30080"
+  # Use backend-service:8080 for server-side fetches (Next.js SSR) inside the cluster
+  API_URL_INTERNAL: "http://backend-service:8080"

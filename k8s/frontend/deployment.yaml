@@ -35,6 +35,13 @@ spec:
               name: wander-config
               key: NEXT_PUBLIC_API_URL
 
+        # Server-side API URL for Next.js SSR
+        - name: API_URL_INTERNAL
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: API_URL_INTERNAL
+
         - name: NODE_ENV
           value: "production"
 
